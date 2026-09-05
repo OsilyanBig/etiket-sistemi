@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-// Fabric.js tipleri
 type FabricCanvas = any;
 type FabricObject = any;
 
-export default function EditorPage() {
+function EditorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const template = searchParams.get('template') || 'etiket1';
@@ -17,23 +16,23 @@ export default function EditorPage() {
   const [fabricLoaded, setFabricLoaded] = useState(false);
   const [selectedObj, setSelectedObj] = useState<FabricObject | null>(null);
 
-  // Ayarlar
   const [fontFamily, setFontFamily] = useState('Arial');
   const [fontSize, setFontSize] = useState(24);
   const [fontColor, setFontColor] = useState('#000000');
   const [fontWeight, setFontWeight] = useState('normal');
   const [fontStyle, setFontStyle] = useState('normal');
 
-  // Canvas boyutları (etiket PNG boyutu)
   const CANVAS_W = 620;
   const CANVAS_H = 250;
 
-  // Fabric.js yükle
   useEffect(() => {
-    const loadFabric = async () => {
-      const fabric = (await import('fabric')).default;
+    let isMounted = true;
 
-      if (!canvasRef.current) return;
+    const loadFabric = async () => {
+      const fabricModule = await import('fabric');
+      const fabric = (fabricModule as any).fabric || fabricModule.default || fabricModule;
+
+      if (!canvasRef.current || !isMounted) return;
 
       const canvas = new fabric.Canvas(canvasRef.current, {
         width: CANVAS_W,
@@ -42,10 +41,10 @@ export default function EditorPage() {
         preserveObjectStacking: true,
       });
 
-      // Arka plan olarak etiket PNG'sini yükle
       fabric.Image.fromURL(
         `/etiketler/${template}.png`,
         (img: any) => {
+          if (!img || !isMounted) return;
           img.set({
             left: 0,
             top: 0,
@@ -61,7 +60,6 @@ export default function EditorPage() {
         { crossOrigin: 'anonymous' }
       );
 
-      // Obje seçildiğinde
       canvas.on('selection:created', (e: any) => {
         const obj = e.selected?.[0];
         if (obj && obj.type === 'i-text') {
@@ -97,14 +95,17 @@ export default function EditorPage() {
     loadFabric();
 
     return () => {
-      fabricCanvasRef.current?.dispose();
+      isMounted = false;
+      if (fabricCanvasRef.current) {
+        fabricCanvasRef.current.dispose();
+      }
     };
   }, [template]);
 
-  // Metin ekle
-  const addText = useCallback(() => {
+  const addText = useCallback(async () => {
     if (!fabricCanvasRef.current) return;
-    const fabric = require('fabric').default;
+    const fabricModule = await import('fabric');
+    const fabric = (fabricModule as any).fabric || fabricModule.default || fabricModule;
 
     const text = new fabric.IText('Metin', {
       left: CANVAS_W / 2 - 40,
@@ -123,7 +124,6 @@ export default function EditorPage() {
     setSelectedObj(text);
   }, [fontFamily, fontSize, fontColor, fontWeight, fontStyle]);
 
-  // Seçili obje özelliklerini güncelle
   const updateProperty = useCallback(
     (prop: string, value: any) => {
       if (!selectedObj || !fabricCanvasRef.current) return;
@@ -133,7 +133,6 @@ export default function EditorPage() {
     [selectedObj]
   );
 
-  // Seçili objeyi sil
   const deleteSelected = useCallback(() => {
     if (!selectedObj || !fabricCanvasRef.current) return;
     fabricCanvasRef.current.remove(selectedObj);
@@ -141,22 +140,18 @@ export default function EditorPage() {
     setSelectedObj(null);
   }, [selectedObj]);
 
-  // İlerle → A4 baskı sayfasına git
   const handleNext = useCallback(() => {
     if (!fabricCanvasRef.current) return;
 
-    // Seçimi kaldır (mavi kutu görünmesin)
     fabricCanvasRef.current.discardActiveObject();
     fabricCanvasRef.current.renderAll();
 
-    // Canvas'ı PNG olarak export et
     const dataURL = fabricCanvasRef.current.toDataURL({
       format: 'png',
       quality: 1,
       multiplier: 1,
     });
 
-    // sessionStorage'a kaydet (print sayfasında kullanacağız)
     sessionStorage.setItem('etiket-image', dataURL);
     router.push('/print');
   }, [router]);
@@ -174,11 +169,10 @@ export default function EditorPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
-      {/* Üst Bar */}
       <header className="bg-white shadow-sm px-6 py-3 flex items-center justify-between no-print">
         <button
           onClick={() => router.push('/')}
-          className="text-gray-500 hover:text-gray-800 flex items-center gap-2"
+          className="text-gray-500 hover:text-gray-800 flex items-center gap-2 font-medium"
         >
           ← Geri
         </button>
@@ -195,7 +189,6 @@ export default function EditorPage() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sol Panel - Araçlar */}
         <aside className="w-72 bg-white shadow-md p-4 overflow-y-auto no-print">
           <h3 className="font-bold text-gray-700 mb-4 text-lg">🛠️ Araçlar</h3>
 
@@ -213,7 +206,6 @@ export default function EditorPage() {
             <div className="space-y-4 border-t pt-4">
               <h4 className="font-semibold text-gray-600">📝 Metin Ayarları</h4>
 
-              {/* Font Ailesi */}
               <div>
                 <label className="text-xs text-gray-500 block mb-1">
                   Font Ailesi
@@ -224,7 +216,7 @@ export default function EditorPage() {
                     setFontFamily(e.target.value);
                     updateProperty('fontFamily', e.target.value);
                   }}
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                  className="w-full border rounded-lg px-3 py-2 text-sm text-gray-800 bg-white"
                 >
                   {fonts.map((f) => (
                     <option key={f} value={f} style={{ fontFamily: f }}>
@@ -234,7 +226,6 @@ export default function EditorPage() {
                 </select>
               </div>
 
-              {/* Font Boyutu */}
               <div>
                 <label className="text-xs text-gray-500 block mb-1">
                   Boyut: {fontSize}px
@@ -253,7 +244,6 @@ export default function EditorPage() {
                 />
               </div>
 
-              {/* Renk */}
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Renk</label>
                 <input
@@ -263,11 +253,10 @@ export default function EditorPage() {
                     setFontColor(e.target.value);
                     updateProperty('fill', e.target.value);
                   }}
-                  className="w-full h-10 rounded cursor-pointer"
+                  className="w-full h-10 rounded cursor-pointer border p-1"
                 />
               </div>
 
-              {/* Kalın / İtalik */}
               <div className="flex gap-2">
                 <button
                   onClick={() => {
@@ -299,7 +288,6 @@ export default function EditorPage() {
                 </button>
               </div>
 
-              {/* Sil */}
               <button
                 onClick={deleteSelected}
                 className="w-full bg-red-500 hover:bg-red-600 text-white py-2 
@@ -318,16 +306,23 @@ export default function EditorPage() {
           )}
         </aside>
 
-        {/* Orta - Canvas Alanı */}
         <main className="flex-1 flex items-center justify-center p-8 overflow-auto">
-          <div className="bg-white rounded-2xl shadow-lg p-6">
+          <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center">
             <canvas ref={canvasRef} className="border border-gray-200 rounded" />
-            <p className="text-xs text-gray-400 text-center mt-2">
+            <p className="text-xs text-gray-400 text-center mt-3">
               52.5mm × 21.2mm (300 DPI — 620×250px)
             </p>
           </div>
         </main>
       </div>
     </div>
+  );
+}
+
+export default function EditorPage() {
+  return (
+    <Suspense fallback={<div className="p-10 text-center">Yükleniyor...</div>}>
+      <EditorContent />
+    </Suspense>
   );
 }
