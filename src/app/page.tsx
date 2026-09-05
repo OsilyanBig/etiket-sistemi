@@ -16,7 +16,7 @@ export default function HomePage() {
         setLoading(false);
       })
       .catch(() => {
-        // Fallback: manuel liste (manifest yoksa)
+        // Fallback: manuel liste
         setEtiketler([
           'etiket1', 'etiket2', 'etiket3', 'etiket4', 'etiket5',
           'etiket6', 'etiket7', 'etiket8', 'etiket9', 'etiket10',
@@ -28,7 +28,6 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
       <div className="max-w-5xl mx-auto">
-        {/* Başlık */}
         <div className="text-center mb-10">
           <h1 className="text-4xl font-bold text-gray-800 mb-2">
             🏷️ Etiket Oluşturucu
@@ -50,11 +49,11 @@ export default function HomePage() {
                 onClick={() => router.push(`/editor?template=${etiket}`)}
                 className="group bg-white rounded-2xl shadow-md hover:shadow-xl 
                            transition-all duration-300 p-4 hover:-translate-y-1 
-                           border-2 border-transparent hover:border-blue-400"
+                           border-2 border-transparent hover:border-blue-400 text-left"
               >
-                <div className="aspect-[620/250] bg-gray-100 rounded-xl overflow-hidden mb-3">
+                <div className="aspect-[620/250] bg-gray-100 rounded-xl overflow-hidden mb-3 flex items-center justify-center">
                   <img
-                    src={`/etiketler/${etiket}.png`}
+                    src={`/etiketler/${etiket}.jpg`}
                     alt={etiket}
                     className="w-full h-full object-contain group-hover:scale-105 transition-transform"
                   />
