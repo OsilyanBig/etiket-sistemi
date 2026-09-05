@@ -14,7 +14,7 @@ jobs:
       - name: Manifest oluştur
         run: |
           cd public/etiketler
-          ls *.png 2>/dev/null | sed 's/\.png$//' | \
+          ls *.jpg 2>/dev/null | sed 's/\.jpg$//' | \
             jq -R -s 'split("\n") | map(select(. != ""))' > manifest.json
           cat manifest.json
 
