@@ -41,8 +41,9 @@ function EditorContent() {
         preserveObjectStacking: true,
       });
 
+      // JPG olarak yüklüyoruz:
       fabric.Image.fromURL(
-        `/etiketler/${template}.png`,
+        `/etiketler/${template}.jpg`,
         (img: any) => {
           if (!img || !isMounted) return;
           img.set({
