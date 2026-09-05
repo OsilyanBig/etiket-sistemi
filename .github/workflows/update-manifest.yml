@@ -1,0 +1,27 @@
+name: Etiket Manifest Güncelle
+
+on:
+  push:
+    paths:
+      - 'public/etiketler/**'
+
+jobs:
+  update-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Manifest oluştur
+        run: |
+          cd public/etiketler
+          ls *.png 2>/dev/null | sed 's/\.png$//' | \
+            jq -R -s 'split("\n") | map(select(. != ""))' > manifest.json
+          cat manifest.json
+
+      - name: Değişiklikleri commit et
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/etiketler/manifest.json
+          git diff --staged --quiet || git commit -m "🏷️ manifest.json otomatik güncellendi"
+          git push
